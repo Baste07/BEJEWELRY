@@ -1,0 +1,575 @@
+<!-- 
+  BEJEWELRY - Philippine Address Lookup Form
+  Uses Nominatim (OpenStreetMap) + Leaflet.js
+  No API keys required. Embeds seamlessly into profile.php address form.
+  
+  Integration: Insert this section BEFORE the "New Address" form fields in profile.php
+-->
+
+<style>
+  /* ── ADDRESS LOOKUP STYLES ─── */
+  .addr-lookup-section {
+    background: linear-gradient(135deg, #FEF1F3 0%, #FCE4EC 100%);
+    border: 1px solid #E0CBD3;
+    border-radius: 18px;
+    padding: 24px;
+    margin-bottom: 24px;
+    box-shadow: 0 2px 8px rgba(36, 20, 24, 0.08);
+  }
+
+  .addr-lookup-title {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #241418;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .addr-lookup-title::before {
+    content: '📍';
+    font-size: 1.3rem;
+  }
+
+  /* Search Bar */
+  .addr-search-wrapper {
+    margin-bottom: 0;
+    position: relative;
+    z-index: 101;
+    background: inherit;
+  }
+
+  .addr-search-input {
+    width: 100%;
+    padding: 13px 16px;
+    font-size: 0.9rem;
+    color: #241418;
+    background: #FFFFFF;
+    border: 1.5px solid #D0B8C1;
+    border-radius: 12px;
+    outline: none;
+    font-family: inherit;
+    transition: all 0.25s ease;
+    box-shadow: 0 1px 3px rgba(36, 20, 24, 0.06);
+  }
+
+  .addr-search-input:focus {
+    border-color: #D96070;
+    box-shadow: 0 0 0 3px rgba(217, 96, 112, 0.1);
+    background: #FFFBFC;
+  }
+
+  .addr-search-input::placeholder {
+    color: #AC8898;
+    font-weight: 500;
+  }
+
+  /* Autocomplete Dropdown */
+  .addr-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #FFFFFF;
+    border: 1px solid #E0CBD3;
+    border-top: none;
+    border-radius: 0 0 12px 12px;
+    max-height: 280px;
+    overflow-y: auto;
+    z-index: 100;
+    display: none;
+    box-shadow: 0 4px 12px rgba(36, 20, 24, 0.12);
+  }
+
+  .addr-suggestions.show {
+    display: block;
+  }
+
+  .addr-suggestion-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    color: #3A2028;
+    border-bottom: 1px solid #F5E8ED;
+    transition: background-color 0.15s ease;
+    line-height: 1.4;
+  }
+
+  .addr-suggestion-item:last-child {
+    border-bottom: none;
+  }
+
+  .addr-suggestion-item:hover {
+    background-color: #FEF1F3;
+    color: #D96070;
+    padding-left: 20px;
+  }
+
+  .addr-suggestion-item .location-name {
+    font-weight: 600;
+    display: block;
+    margin-bottom: 2px;
+  }
+
+  .addr-suggestion-item .location-context {
+    font-size: 0.75rem;
+    color: #7A5E68;
+  }
+
+  /* Map Container */
+  .addr-map-container {
+    position: relative;
+    width: 100%;
+    height: 380px;
+    border-radius: 14px;
+    overflow: hidden;
+    border: 1.5px solid #D0B8C1;
+    box-shadow: 0 4px 18px rgba(36, 20, 24, 0.13);
+    margin-bottom: 16px;
+    margin-top: 300px;
+    background: #F5F5F5;
+  }
+
+  #addr-map {
+    width: 100%;
+    height: 100%;
+  }
+
+  /* Map Info & Controls */
+  .addr-map-info {
+    position: absolute;
+    bottom: 12px;
+    left: 12px;
+    background: #FFFFFF;
+    padding: 10px 14px;
+    border-radius: 10px;
+    font-size: 0.75rem;
+    color: #7A5E68;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    display: none;
+    z-index: 10;
+    max-width: 280px;
+    line-height: 1.4;
+  }
+
+  .addr-map-info.show {
+    display: block;
+  }
+
+  .addr-map-info strong {
+    color: #241418;
+    display: block;
+    margin-bottom: 3px;
+    font-weight: 600;
+  }
+
+  /* Helper Text */
+  .addr-helper-text {
+    font-size: 0.76rem;
+    color: #7A5E68;
+    margin-top: 10px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .addr-helper-text::before {
+    content: 'ℹ';
+    font-weight: bold;
+    color: #D96070;
+  }
+
+  /* Loading State */
+  .addr-loading {
+    display: none;
+    text-align: center;
+    padding: 16px;
+    font-size: 0.82rem;
+    color: #7A5E68;
+  }
+
+  .addr-loading.show {
+    display: block;
+  }
+
+  /* Leaflet Overrides for Theme */
+  .leaflet-control-zoom {
+    border-radius: 8px;
+    border: 1.5px solid #D0B8C1 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12) !important;
+  }
+
+  .leaflet-control-zoom-in,
+  .leaflet-control-zoom-out {
+    color: #D96070 !important;
+    font-weight: bold !important;
+    font-size: 1.1rem !important;
+  }
+
+  .leaflet-control-zoom-in:hover,
+  .leaflet-control-zoom-out:hover {
+    background-color: #FCE4EC !important;
+  }
+
+  /* Mobile Responsive */
+  @media (max-width: 768px) {
+    .addr-lookup-section {
+      padding: 18px;
+    }
+
+    .addr-map-container {
+      height: 300px;
+    }
+
+    .addr-search-input {
+      font-size: 16px; /* Prevents zoom on iOS */
+    }
+  }
+</style>
+
+<!-- HTML Structure -->
+<div class="addr-lookup-section" id="addressLookupSection">
+  <div class="addr-lookup-title">Find Your Address on Map</div>
+
+  <!-- Search Bar with Autocomplete -->
+  <div class="addr-search-wrapper">
+    <input
+      type="text"
+      id="addrSearchInput"
+      class="addr-search-input"
+      placeholder="Search Philippine address, city, or barangay..."
+      autocomplete="off"
+    />
+    <div class="addr-suggestions" id="addrSuggestions"></div>
+    <div class="addr-loading" id="addrLoading">
+      <span>🔍 Searching...</span>
+    </div>
+  </div>
+
+  <!-- Interactive Map -->
+  <div class="addr-map-container">
+    <div id="addr-map"></div>
+    <div class="addr-map-info" id="addrMapInfo">
+      <strong id="mapInfoName">Selected Location</strong>
+      <div id="mapInfoAddress"></div>
+    </div>
+  </div>
+
+  <!-- Helper Text -->
+  <div class="addr-helper-text">
+    Click the map or search above to select your location
+  </div>
+</div>
+
+<!-- Include Leaflet CSS (must come first) -->
+<link
+  rel="stylesheet"
+  href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css"
+/>
+<!-- Include Leaflet JS -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
+<script>
+  /**
+   * BEJEWELRY Address Lookup - Nominatim + Leaflet Integration
+   * Handles Philippine address search and map-based location selection
+   */
+
+  (function () {
+    'use strict';
+
+    // Configuration
+    const CONFIG = {
+      map: {
+        center: [12.8797, 121.774],        // Center of Philippines
+        zoom: 6,
+        maxZoom: 19,
+        minZoom: 5,
+      },
+      nominatim: {
+        baseUrl: 'https://nominatim.openstreetmap.org/search',
+        countryCode: 'ph',
+        timeout: 5000,
+      },
+    };
+
+    // DOM Elements
+    const elements = {
+      searchInput: document.getElementById('addrSearchInput'),
+      suggestions: document.getElementById('addrSuggestions'),
+      loading: document.getElementById('addrLoading'),
+      mapContainer: document.getElementById('addr-map'),
+      mapInfo: document.getElementById('addrMapInfo'),
+      mapInfoName: document.getElementById('mapInfoName'),
+      mapInfoAddress: document.getElementById('mapInfoAddress'),
+      // Form fields (from existing profile.php)
+      streetInput: document.querySelector('input[name="street"]') || document.querySelector('.fg input:nth-of-type(3)'),
+      cityInput: document.querySelector('input[name="city"]') || document.querySelector('.fg input:nth-of-type(4)'),
+      provinceInput: document.querySelector('input[name="province"]') || document.querySelector('.fg input:nth-of-type(5)'),
+      zipInput: document.querySelector('input[name="zip"]') || document.querySelector('.fg input:nth-of-type(6)'),
+    };
+
+    let map = null;
+    let marker = null;
+    let currentLocation = null;
+    let searchTimeout = null;
+
+    /**
+     * Initialize the map
+     */
+    function initMap() {
+      map = L.map(elements.mapContainer).setView(CONFIG.map.center, CONFIG.map.zoom);
+
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; <a href="https://osm.org/copyright">OpenStreetMap</a> contributors',
+        maxZoom: CONFIG.map.maxZoom,
+        minZoom: CONFIG.map.minZoom,
+      }).addTo(map);
+
+      // Handle map clicks
+      map.on('click', function (e) {
+        setMarkerLocation(e.latlng.lat, e.latlng.lng);
+      });
+    }
+
+    /**
+     * Search using Nominatim API
+     */
+    async function searchAddress(query) {
+      if (!query.trim()) {
+        elements.suggestions.classList.remove('show');
+        return;
+      }
+
+      elements.loading.classList.add('show');
+
+      try {
+        const params = new URLSearchParams({
+          q: query,
+          countrycodes: CONFIG.nominatim.countryCode,
+          format: 'json',
+          limit: 10,
+          addressdetails: 1,
+        });
+
+        const controller = new AbortController();
+        const timeout = setTimeout(() => controller.abort(), CONFIG.nominatim.timeout);
+
+        const response = await fetch(
+          `${CONFIG.nominatim.baseUrl}?${params}`,
+          { signal: controller.signal }
+        );
+
+        clearTimeout(timeout);
+
+        if (!response.ok) throw new Error('API error');
+
+        const results = await response.json();
+        displaySuggestions(results);
+      } catch (error) {
+        console.error('Search error:', error);
+        elements.suggestions.innerHTML = '<div class="addr-suggestion-item" style="color:#C0392B">Unable to search. Check your connection.</div>';
+        elements.suggestions.classList.add('show');
+      } finally {
+        elements.loading.classList.remove('show');
+      }
+    }
+
+    /**
+     * Display autocomplete suggestions
+     */
+    function displaySuggestions(results) {
+      elements.suggestions.innerHTML = '';
+
+      if (results.length === 0) {
+        elements.suggestions.innerHTML = '<div class="addr-suggestion-item" style="color:#7A5E68">No results found in Philippines</div>';
+        elements.suggestions.classList.add('show');
+        return;
+      }
+
+      results.forEach((result) => {
+        const item = document.createElement('div');
+        item.className = 'addr-suggestion-item';
+
+        const name = result.name || result.address?.city || result.address?.town || 'Unknown';
+        const context = buildLocationContext(result.address);
+
+        item.innerHTML = `
+          <span class="location-name">${name}</span>
+          <span class="location-context">${context}</span>
+        `;
+
+        item.addEventListener('click', () => {
+          selectLocation(result);
+        });
+
+        elements.suggestions.appendChild(item);
+      });
+
+      elements.suggestions.classList.add('show');
+    }
+
+    /**
+     * Build context string from address components
+     */
+    function buildLocationContext(address) {
+      if (!address) return '';
+
+      const parts = [];
+      if (address.city || address.town) parts.push(address.city || address.town);
+      if (address.state) parts.push(address.state);
+
+      return parts.join(', ');
+    }
+
+    /**
+     * Select location from search results
+     */
+    function selectLocation(result) {
+      elements.suggestions.classList.remove('show');
+      elements.searchInput.value = result.name || '';
+
+      currentLocation = result;
+      setMarkerLocation(parseFloat(result.lat), parseFloat(result.lon));
+      populateFormFields(result);
+    }
+
+    /**
+     * Set marker on map at given coordinates
+     */
+    function setMarkerLocation(lat, lng) {
+      if (marker) {
+        map.removeLayer(marker);
+      }
+
+      marker = L.marker([lat, lng], {
+        icon: L.icon({
+          iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png',
+          iconSize: [25, 41],
+          iconAnchor: [12, 41],
+          popupAnchor: [1, -34],
+        }),
+      }).addTo(map);
+
+      map.setView([lat, lng], Math.max(13, map.getZoom()));
+
+      // Reverse geocode to get address
+      reverseGeocode(lat, lng);
+    }
+
+    /**
+     * Reverse geocode coordinates to get address
+     */
+    async function reverseGeocode(lat, lng) {
+      try {
+        const params = new URLSearchParams({
+          lat,
+          lon: lng,
+          format: 'json',
+          addressdetails: 1,
+          zoom: 18,
+        });
+
+        const response = await fetch(
+          `https://nominatim.openstreetmap.org/reverse?${params}`
+        );
+
+        if (!response.ok) throw new Error('Reverse geocode error');
+
+        const result = await response.json();
+        currentLocation = result;
+
+        updateMapInfo(result);
+        populateFormFields(result);
+      } catch (error) {
+        console.error('Reverse geocode error:', error);
+      }
+    }
+
+    /**
+     * Update map info display
+     */
+    function updateMapInfo(result) {
+      const address = result.address || {};
+      const name = result.name || address.city || address.town || 'Selected Location';
+
+      elements.mapInfoName.textContent = name;
+
+      const parts = [];
+      if (address.road) parts.push(address.road);
+      if (address.suburb) parts.push(address.suburb);
+      if (address.city || address.town) parts.push(address.city || address.town);
+
+      elements.mapInfoAddress.textContent = parts.join(', ') || 'Location selected';
+      elements.mapInfo.classList.add('show');
+    }
+
+    /**
+     * Populate form fields from location data
+     */
+    function populateFormFields(result) {
+      if (!result.address) return;
+
+      const address = result.address;
+
+      // Street / Barangay (road + suburb/neighbourhood)
+      if (elements.streetInput) {
+        const street = [];
+        if (address.road) street.push(address.road);
+        if (address.suburb) street.push(address.suburb);
+        if (address.neighbourhood) street.push(address.neighbourhood);
+        if (street.length > 0) {
+          elements.streetInput.value = street.join(', ');
+        }
+      }
+
+      // City / Municipality
+      if (elements.cityInput) {
+        const city = address.city || address.town || '';
+        if (city) elements.cityInput.value = city;
+      }
+
+      // Province
+      if (elements.provinceInput) {
+        const province = address.state || '';
+        if (province) elements.provinceInput.value = province;
+      }
+
+      // ZIP Code
+      if (elements.zipInput) {
+        const zip = address.postcode || '';
+        if (zip) elements.zipInput.value = zip;
+      }
+    }
+
+    /**
+     * Handle search input with debounce
+     */
+    elements.searchInput.addEventListener('input', (e) => {
+      clearTimeout(searchTimeout);
+      searchTimeout = setTimeout(() => {
+        searchAddress(e.target.value);
+      }, 300);
+    });
+
+    /**
+     * Close suggestions when clicking outside
+     */
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.addr-search-wrapper')) {
+        elements.suggestions.classList.remove('show');
+      }
+    });
+
+    /**
+     * Initialize on DOM ready
+     */
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initMap);
+    } else {
+      initMap();
+    }
+  })();
+</script>

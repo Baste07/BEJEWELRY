@@ -1,0 +1,87 @@
+/* Login page specific layout to match CUSTOMER2/login.html */
+
+.login-wrap{
+  min-height:100vh;
+  display:grid;
+  grid-template-columns:1.1fr 1fr;
+}
+
+.login-brand{
+  background:linear-gradient(145deg,var(--rose-deep) 0%,var(--rose) 60%,#E89090 100%);
+  display:flex;
+  flex-direction:column;
+  justify-content:center;
+  padding:64px 56px;
+  position:relative;
+  overflow:hidden;
+}
+
+.login-brand::before{
+  content:'';
+  position:absolute;
+  inset:0;
+  background:repeating-linear-gradient(
+    45deg,
+    transparent,
+    transparent 40px,
+    rgba(255,255,255,.04) 40px,
+    rgba(255,255,255,.04) 41px
+  );
+  pointer-events:none;
+}
+
+.login-brand > div{
+  position:relative;
+  z-index:1;
+  color:rgba(255,255,255,.96);
+}
+
+.login-brand .brand-sub{
+  color:rgba(255,255,255,.65);
+}
+
+.login-brand .brand-tagline{
+  color:var(--white);
+}
+
+.login-brand .brand-body{
+  color:rgba(255,255,255,.82);
+}
+
+.login-brand .brand-feature{
+  color:rgba(255,255,255,.9);
+}
+
+.login-form-wrap{
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:48px 56px;
+  background:var(--white);
+  overflow-y:auto;
+}
+
+.login-form-inner{
+  width:100%;
+  max-width:400px;
+  background:var(--white);
+  padding:34px 34px 30px;
+  box-shadow:none;
+  border:none;
+}
+
+@media (max-width:800px){
+  .login-wrap{
+    grid-template-columns:1fr;
+  }
+  .login-brand{
+    display:none;
+  }
+  .login-form-wrap{
+    padding:40px 24px;
+  }
+  .login-form-inner{
+    padding:26px 24px 24px;
+  }
+}
+

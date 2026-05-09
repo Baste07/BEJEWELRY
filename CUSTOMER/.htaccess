@@ -1,0 +1,17 @@
+Options -Indexes
+
+# ── Route all /api/* requests through api/index.php ──────
+RewriteEngine On
+RewriteBase /
+
+# Block direct access to php files inside /api except approved entry points
+RewriteRule ^api/(?!index\.php|submit_review\.php|submit_courier_rating\.php|auth/session\.php|mark_order_received\.php|admin/delete_flagged_orders\.php$)[a-z_/]+\.php$ - [F,L]
+
+# Route everything under /api/ to api/index.php
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^api/(.*)$ api/index.php [QSA,L]
+
+# ── Frontend: serve HTML files directly ──────────────────
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^([a-z\-]+)\.html$ $1.html [L]
